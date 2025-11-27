@@ -108,43 +108,51 @@ function App() {
       {/* 圖片輸入 */}
       <ImageInput onImageSelect={handleImageSelect} />
 
-      {/* 圖片顯示與標記 */}
-      <div className="image-marker-container">
-        {imageUrl ? (
-          <ImageMarker
-            imageUrl={imageUrl}
-            points={points}
-            onPointsChange={setPoints}
-          />
-        ) : (
-          <div className="placeholder">
-            請拍照或上傳圖片
+      {/* 主要內容區：左右兩欄 */}
+      <div className="main-content">
+        {/* 左側：上傳的圖片 */}
+        <div className="left-panel">
+          <div className="image-marker-container">
+            {imageUrl ? (
+              <ImageMarker
+                imageUrl={imageUrl}
+                points={points}
+                onPointsChange={setPoints}
+              />
+            ) : (
+              <div className="placeholder">
+                請拍照或上傳圖片
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* 清除按鈕 */}
-      {imageUrl && (
-        <ClearButton onClick={handleClear} disabled={points.length === 0} />
-      )}
+          {/* 清除按鈕 */}
+          {imageUrl && (
+            <ClearButton onClick={handleClear} disabled={points.length === 0} />
+          )}
 
-      {/* 標記點數量提示 */}
-      {points.length > 0 && (
-        <div style={{ textAlign: 'center', color: '#666' }}>
-          已標記 {points.length} 個點
+          {/* 標記點數量提示 */}
+          {points.length > 0 && (
+            <div style={{ textAlign: 'center', color: '#666', marginTop: 8 }}>
+              已標記 {points.length} 個點
+            </div>
+          )}
         </div>
-      )}
 
-      {/* 搜尋結果區域 */}
-      {loading ? (
-        <div style={{ textAlign: 'center', color: '#888' }}>載入中...</div>
-      ) : (
-        <SearchResults
-          results={searchResults}
-          getImageUrl={getImageUrl}
-          onRouteClick={handleRouteClick}
-        />
-      )}
+        {/* 右側：搜尋結果 */}
+        <div className="right-panel">
+          <h3>相似路線</h3>
+          {loading ? (
+            <div style={{ textAlign: 'center', color: '#888' }}>載入中...</div>
+          ) : (
+            <SearchResults
+              results={searchResults}
+              getImageUrl={getImageUrl}
+              onRouteClick={handleRouteClick}
+            />
+          )}
+        </div>
+      </div>
 
       {/* 操作按鈕區 */}
       <div className="action-buttons">
@@ -159,13 +167,6 @@ function App() {
           查看所有路線
         </button>
       </div>
-
-      {/* Debug: 顯示 imageBlob 狀態 */}
-      {imageBlob && (
-        <div style={{ fontSize: '12px', color: '#888', textAlign: 'center' }}>
-          圖片大小: {(imageBlob.size / 1024).toFixed(1)} KB
-        </div>
-      )}
 
       {/* 路線詳情彈窗 */}
       {selectedResult && (

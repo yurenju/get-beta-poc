@@ -42,7 +42,7 @@ export function RouteCard({
 
   return (
     <div className="route-card" onClick={onClick}>
-      <div style={{ position: 'relative', width: '100%', height: 90 }}>
+      <div className="route-card-image-container">
         {imageUrl ? (
           <>
             <img

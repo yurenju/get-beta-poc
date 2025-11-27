@@ -1,14 +1,31 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import './App.css';
 import { ImageInput } from './components/ImageInput';
 import { ImageMarker } from './components/ImageMarker';
 import { ClearButton } from './components/ClearButton';
+import { SearchResults } from './components/SearchResults';
+import { RouteDetailModal } from './components/RouteDetailModal';
+import { useRoutes } from './hooks/useRoutes';
+import { searchRoutes, type SearchResult } from './lib/matching';
 import type { Point } from './types/route';
 
 function App() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageBlob, setImageBlob] = useState<Blob | null>(null);
   const [points, setPoints] = useState<Point[]>([]);
+  const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  // 路線資料管理
+  const { routes, loading, getImageUrl, addImageToRoute, refresh } = useRoutes();
+
+  // 即時搜尋：當 points 變更時自動搜尋
+  const searchResults = useMemo(() => {
+    if (points.length === 0 || routes.length === 0) {
+      return [];
+    }
+    return searchRoutes(points, routes);
+  }, [points, routes]);
 
   const handleImageSelect = (blob: Blob, url: string) => {
     // 清理之前的 Blob URL
@@ -22,6 +39,31 @@ function App() {
 
   const handleClear = () => {
     setPoints([]);
+  };
+
+  // 顯示 Toast 訊息
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 2000);
+  };
+
+  // 點擊搜尋結果
+  const handleRouteClick = (result: SearchResult) => {
+    setSelectedResult(result);
+  };
+
+  // 將照片加入現有路線
+  const handleAddToRoute = async () => {
+    if (!selectedResult || !imageBlob || points.length === 0) return;
+
+    try {
+      await addImageToRoute(selectedResult.route.id, imageBlob, points);
+      showToast('已成功加入路線！');
+      setSelectedResult(null);
+      await refresh();
+    } catch (err) {
+      showToast('加入失敗：' + (err instanceof Error ? err.message : '未知錯誤'));
+    }
   };
 
   return (
@@ -58,10 +100,16 @@ function App() {
         </div>
       )}
 
-      {/* 搜尋結果區域（後續任務實作） */}
-      <div className="search-results">
-        {/* 搜尋結果將在後續任務中實作 */}
-      </div>
+      {/* 搜尋結果區域 */}
+      {loading ? (
+        <div style={{ textAlign: 'center', color: '#888' }}>載入中...</div>
+      ) : (
+        <SearchResults
+          results={searchResults}
+          getImageUrl={getImageUrl}
+          onRouteClick={handleRouteClick}
+        />
+      )}
 
       {/* 操作按鈕區 */}
       <div className="action-buttons">
@@ -79,6 +127,21 @@ function App() {
           圖片大小: {(imageBlob.size / 1024).toFixed(1)} KB
         </div>
       )}
+
+      {/* 路線詳情彈窗 */}
+      {selectedResult && (
+        <RouteDetailModal
+          route={selectedResult.route}
+          matchedImageId={selectedResult.matchedImageId}
+          getImageUrl={getImageUrl}
+          onClose={() => setSelectedResult(null)}
+          onAddImage={handleAddToRoute}
+          showAddButton={imageBlob !== null && points.length > 0}
+        />
+      )}
+
+      {/* Toast 訊息 */}
+      {toast && <div className="toast">{toast}</div>}
     </div>
   );
 }

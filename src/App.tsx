@@ -5,6 +5,7 @@ import { ImageMarker } from './components/ImageMarker';
 import { ClearButton } from './components/ClearButton';
 import { SearchResults } from './components/SearchResults';
 import { RouteDetailModal } from './components/RouteDetailModal';
+import { CreateRouteModal } from './components/CreateRouteModal';
 import { useRoutes } from './hooks/useRoutes';
 import { searchRoutes, type SearchResult } from './lib/matching';
 import type { Point } from './types/route';
@@ -14,10 +15,11 @@ function App() {
   const [imageBlob, setImageBlob] = useState<Blob | null>(null);
   const [points, setPoints] = useState<Point[]>([]);
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   // 路線資料管理
-  const { routes, loading, getImageUrl, addImageToRoute, refresh } = useRoutes();
+  const { routes, loading, getImageUrl, addRoute, addImageToRoute, refresh } = useRoutes();
 
   // 即時搜尋：當 points 變更時自動搜尋
   const searchResults = useMemo(() => {
@@ -63,6 +65,20 @@ function App() {
       await refresh();
     } catch (err) {
       showToast('加入失敗：' + (err instanceof Error ? err.message : '未知錯誤'));
+    }
+  };
+
+  // 建立新路線
+  const handleCreateRoute = async (name: string) => {
+    if (!imageBlob || points.length === 0) return;
+
+    try {
+      await addRoute(name, imageBlob, points);
+      showToast('路線建立成功！');
+      setShowCreateModal(false);
+      await refresh();
+    } catch (err) {
+      showToast('建立失敗：' + (err instanceof Error ? err.message : '未知錯誤'));
     }
   };
 
@@ -113,7 +129,11 @@ function App() {
 
       {/* 操作按鈕區 */}
       <div className="action-buttons">
-        <button className="btn-primary" disabled={!imageUrl || points.length < 3}>
+        <button
+          className="btn-primary"
+          disabled={!imageUrl || points.length < 3}
+          onClick={() => setShowCreateModal(true)}
+        >
           建立新路線
         </button>
         <button className="btn-secondary">
@@ -137,6 +157,14 @@ function App() {
           onClose={() => setSelectedResult(null)}
           onAddImage={handleAddToRoute}
           showAddButton={imageBlob !== null && points.length > 0}
+        />
+      )}
+
+      {/* 建立路線彈窗 */}
+      {showCreateModal && (
+        <CreateRouteModal
+          onConfirm={handleCreateRoute}
+          onClose={() => setShowCreateModal(false)}
         />
       )}
 

@@ -64,15 +64,42 @@ export function ImageMarker({
         }}
       >
         {points.map((point, index) => (
-          <circle
-            key={index}
-            cx={point.x}
-            cy={point.y}
-            r={0.02}
-            fill="red"
-            stroke="white"
-            strokeWidth={0.005}
-          />
+          <g key={index}>
+            {/* 十字標記 - 白色外框 */}
+            <line
+              x1={point.x - 0.025}
+              y1={point.y}
+              x2={point.x + 0.025}
+              y2={point.y}
+              stroke="white"
+              strokeWidth={0.008}
+            />
+            <line
+              x1={point.x}
+              y1={point.y - 0.025}
+              x2={point.x}
+              y2={point.y + 0.025}
+              stroke="white"
+              strokeWidth={0.008}
+            />
+            {/* 十字標記 - 紅色內線 */}
+            <line
+              x1={point.x - 0.025}
+              y1={point.y}
+              x2={point.x + 0.025}
+              y2={point.y}
+              stroke="red"
+              strokeWidth={0.004}
+            />
+            <line
+              x1={point.x}
+              y1={point.y - 0.025}
+              x2={point.x}
+              y2={point.y + 0.025}
+              stroke="red"
+              strokeWidth={0.004}
+            />
+          </g>
         ))}
       </svg>
     </div>

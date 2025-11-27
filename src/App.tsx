@@ -6,9 +6,10 @@ import { ClearButton } from './components/ClearButton';
 import { SearchResults } from './components/SearchResults';
 import { RouteDetailModal } from './components/RouteDetailModal';
 import { CreateRouteModal } from './components/CreateRouteModal';
+import { RouteListModal } from './components/RouteListModal';
 import { useRoutes } from './hooks/useRoutes';
 import { searchRoutes, type SearchResult } from './lib/matching';
-import type { Point } from './types/route';
+import type { Point, Route } from './types/route';
 
 function App() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -16,10 +17,12 @@ function App() {
   const [points, setPoints] = useState<Point[]>([]);
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showRouteList, setShowRouteList] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   // 路線資料管理
-  const { routes, loading, getImageUrl, addRoute, addImageToRoute, refresh } = useRoutes();
+  const { routes, loading, getImageUrl, addRoute, addImageToRoute, deleteRoute, refresh } = useRoutes();
 
   // 即時搜尋：當 points 變更時自動搜尋
   const searchResults = useMemo(() => {
@@ -82,6 +85,22 @@ function App() {
     }
   };
 
+  // 刪除路線
+  const handleDeleteRoute = async (routeId: string) => {
+    try {
+      await deleteRoute(routeId);
+      showToast('路線已刪除');
+      await refresh();
+    } catch (err) {
+      showToast('刪除失敗：' + (err instanceof Error ? err.message : '未知錯誤'));
+    }
+  };
+
+  // 從路線清單點擊查看詳情
+  const handleRouteListClick = (route: Route) => {
+    setSelectedRoute(route);
+  };
+
   return (
     <div className="app">
       <h1>抱石路線標註 POC</h1>
@@ -136,7 +155,7 @@ function App() {
         >
           建立新路線
         </button>
-        <button className="btn-secondary">
+        <button className="btn-secondary" onClick={() => setShowRouteList(true)}>
           查看所有路線
         </button>
       </div>
@@ -165,6 +184,27 @@ function App() {
         <CreateRouteModal
           onConfirm={handleCreateRoute}
           onClose={() => setShowCreateModal(false)}
+        />
+      )}
+
+      {/* 路線清單彈窗 */}
+      {showRouteList && (
+        <RouteListModal
+          routes={routes}
+          getImageUrl={getImageUrl}
+          onClose={() => setShowRouteList(false)}
+          onDelete={handleDeleteRoute}
+          onRouteClick={handleRouteListClick}
+        />
+      )}
+
+      {/* 從路線清單查看路線詳情 */}
+      {selectedRoute && (
+        <RouteDetailModal
+          route={selectedRoute}
+          getImageUrl={getImageUrl}
+          onClose={() => setSelectedRoute(null)}
+          showAddButton={false}
         />
       )}
 

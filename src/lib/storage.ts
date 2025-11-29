@@ -97,3 +97,57 @@ export async function deleteImage(filename: string): Promise<void> {
     throw error;
   }
 }
+
+/**
+ * 匯出所有資料為 ZIP 檔案
+ * @returns ZIP Blob
+ */
+export async function exportDataset(): Promise<Blob> {
+  const { default: JSZip } = await import('jszip');
+  const zip = new JSZip();
+
+  // 載入路線資料
+  const routes = await loadRoutes();
+  zip.file('routes.json', JSON.stringify({ routes }, null, 2));
+
+  // 載入所有圖片
+  const imagesFolder = zip.folder('images');
+  if (imagesFolder) {
+    for (const route of routes) {
+      for (const image of route.images) {
+        try {
+          const blob = await loadImage(image.filename);
+          imagesFolder.file(image.filename, blob);
+        } catch {
+          // 圖片不存在則跳過
+        }
+      }
+    }
+  }
+
+  return await zip.generateAsync({ type: 'blob' });
+}
+
+/**
+ * 清除所有資料（路線和圖片）
+ */
+export async function clearAllData(): Promise<void> {
+  const root = await getRoot();
+
+  // 刪除 routes.json
+  try {
+    await root.removeEntry(ROUTES_FILE);
+  } catch {
+    // 檔案不存在則跳過
+  }
+
+  // 刪除 images 目錄
+  try {
+    await root.removeEntry(IMAGES_DIR, { recursive: true });
+  } catch {
+    // 目錄不存在則跳過
+  }
+
+  // 重新建立 images 目錄
+  await root.getDirectoryHandle(IMAGES_DIR, { create: true });
+}

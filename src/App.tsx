@@ -9,6 +9,7 @@ import { CreateRouteModal } from './components/CreateRouteModal';
 import { RouteListModal } from './components/RouteListModal';
 import { useRoutes } from './hooks/useRoutes';
 import { searchRoutes, type SearchResult } from './lib/matching';
+import { exportDataset, clearAllData } from './lib/storage';
 import type { Point, Route } from './types/route';
 
 function App() {
@@ -101,6 +102,35 @@ function App() {
     setSelectedRoute(route);
   };
 
+  // 匯出測試資料集
+  const handleExportDataset = async () => {
+    try {
+      showToast('正在匯出...');
+      const blob = await exportDataset();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `route-dataset-${new Date().toISOString().slice(0, 10)}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('匯出完成！');
+    } catch (err) {
+      showToast('匯出失敗：' + (err instanceof Error ? err.message : '未知錯誤'));
+    }
+  };
+
+  // 清除所有資料
+  const handleClearAllData = async () => {
+    if (!confirm('確定要清除所有資料嗎？此操作無法復原！')) return;
+    try {
+      await clearAllData();
+      await refresh();
+      showToast('已清除所有資料');
+    } catch (err) {
+      showToast('清除失敗：' + (err instanceof Error ? err.message : '未知錯誤'));
+    }
+  };
+
   return (
     <div className="app">
       <h1>抱石路線標註 POC</h1>
@@ -165,6 +195,12 @@ function App() {
         </button>
         <button className="btn-secondary" onClick={() => setShowRouteList(true)}>
           查看所有路線
+        </button>
+        <button className="btn-secondary" onClick={handleExportDataset} disabled={routes.length === 0}>
+          匯出測試資料集
+        </button>
+        <button className="btn-danger" onClick={handleClearAllData} disabled={routes.length === 0}>
+          清除所有資料
         </button>
       </div>
 

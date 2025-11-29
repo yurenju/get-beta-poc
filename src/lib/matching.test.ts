@@ -3,6 +3,9 @@ import {
   normalizePoints,
   modifiedHausdorffDistance,
   distanceToSimilarity,
+  dtwDistance,
+  relativeOrderSimilarity,
+  combinedSimilarity,
   searchRoutes
 } from './matching';
 import type { Point, Route } from '../types/route';
@@ -179,12 +182,14 @@ describe('distanceToSimilarity', () => {
   });
 
   it('should return 0 for distance >= maxDistance', () => {
-    expect(distanceToSimilarity(0.5)).toBe(0);
+    // 預設 maxDistance 現在是 0.6
+    expect(distanceToSimilarity(0.6)).toBe(0);
     expect(distanceToSimilarity(1.0)).toBe(0);
     expect(distanceToSimilarity(10)).toBe(0);
   });
 
   it('should return 50 for distance = maxDistance/2', () => {
+    expect(distanceToSimilarity(0.3, 0.6)).toBe(50);
     expect(distanceToSimilarity(0.25, 0.5)).toBe(50);
   });
 
@@ -194,7 +199,114 @@ describe('distanceToSimilarity', () => {
   });
 
   it('should round to integer', () => {
-    const result = distanceToSimilarity(0.123, 0.5);
+    const result = distanceToSimilarity(0.123, 0.6);
+    expect(Number.isInteger(result)).toBe(true);
+  });
+});
+
+describe('dtwDistance', () => {
+  it('should return Infinity for empty sequences', () => {
+    expect(dtwDistance([], [])).toBe(Infinity);
+    expect(dtwDistance([1, 2, 3], [])).toBe(Infinity);
+    expect(dtwDistance([], [1, 2, 3])).toBe(Infinity);
+  });
+
+  it('should return 0 for identical sequences', () => {
+    expect(dtwDistance([1, 2, 3], [1, 2, 3])).toBe(0);
+    expect(dtwDistance([0.5], [0.5])).toBe(0);
+  });
+
+  it('should handle sequences of different lengths', () => {
+    // DTW 應該能處理不同長度的序列
+    const dist = dtwDistance([0, 1], [0, 0.5, 1]);
+    expect(dist).toBeLessThan(1);
+    expect(dist).toBeGreaterThan(0);
+  });
+
+  it('should increase with larger differences', () => {
+    const d1 = dtwDistance([0, 1], [0.1, 1.1]);
+    const d2 = dtwDistance([0, 1], [0.5, 1.5]);
+    expect(d2).toBeGreaterThan(d1);
+  });
+
+  it('should be symmetric', () => {
+    const seqA = [0, 0.3, 0.7, 1];
+    const seqB = [0.1, 0.5, 0.9];
+    expect(dtwDistance(seqA, seqB)).toBeCloseTo(dtwDistance(seqB, seqA), 10);
+  });
+});
+
+describe('relativeOrderSimilarity', () => {
+  it('should return 0 for empty point sets', () => {
+    expect(relativeOrderSimilarity([], [])).toBe(0);
+    expect(relativeOrderSimilarity([{ x: 0, y: 0 }], [])).toBe(0);
+  });
+
+  it('should return 100 for single identical points', () => {
+    expect(relativeOrderSimilarity(
+      [{ x: 0.5, y: 0.5 }],
+      [{ x: 0.5, y: 0.5 }]
+    )).toBe(100);
+  });
+
+  it('should return 100 for identical point sets', () => {
+    const points: Point[] = [
+      { x: 0.2, y: 0.1 },
+      { x: 0.5, y: 0.3 },
+      { x: 0.8, y: 0.6 }
+    ];
+    expect(relativeOrderSimilarity(points, points)).toBe(100);
+  });
+
+  it('should be tolerant to uniform scaling', () => {
+    const pointsA: Point[] = [
+      { x: 0.2, y: 0.1 },
+      { x: 0.5, y: 0.3 },
+      { x: 0.8, y: 0.6 }
+    ];
+    // 縮放後的點（相對順序相同）
+    const pointsB: Point[] = [
+      { x: 0.1, y: 0.05 },
+      { x: 0.25, y: 0.15 },
+      { x: 0.4, y: 0.3 }
+    ];
+    // 應該仍有高相似度
+    expect(relativeOrderSimilarity(pointsA, pointsB)).toBeGreaterThan(80);
+  });
+
+  it('should detect different orderings', () => {
+    const pointsA: Point[] = [
+      { x: 0.2, y: 0.1 },  // 最上面，偏左
+      { x: 0.8, y: 0.5 },  // 中間，偏右
+      { x: 0.3, y: 0.9 }   // 最下面，偏左
+    ];
+    const pointsB: Point[] = [
+      { x: 0.8, y: 0.1 },  // 最上面，偏右（不同）
+      { x: 0.2, y: 0.5 },  // 中間，偏左（不同）
+      { x: 0.7, y: 0.9 }   // 最下面，偏右（不同）
+    ];
+    // 順序不同，相似度應該較低
+    expect(relativeOrderSimilarity(pointsA, pointsB)).toBeLessThan(50);
+  });
+});
+
+describe('combinedSimilarity', () => {
+  it('should combine MHD and order similarity with default weights', () => {
+    // 預設權重 MHD=0.6, Order=0.4
+    expect(combinedSimilarity(100, 100)).toBe(100);
+    expect(combinedSimilarity(0, 0)).toBe(0);
+    expect(combinedSimilarity(100, 0)).toBe(60);  // 100*0.6 + 0*0.4
+    expect(combinedSimilarity(0, 100)).toBe(40);  // 0*0.6 + 100*0.4
+  });
+
+  it('should use custom weights', () => {
+    expect(combinedSimilarity(100, 0, { mhd: 0.7, order: 0.3 })).toBe(70);
+    expect(combinedSimilarity(0, 100, { mhd: 0.7, order: 0.3 })).toBe(30);
+    expect(combinedSimilarity(50, 50, { mhd: 0.5, order: 0.5 })).toBe(50);
+  });
+
+  it('should round to integer', () => {
+    const result = combinedSimilarity(33, 67);
     expect(Number.isInteger(result)).toBe(true);
   });
 });

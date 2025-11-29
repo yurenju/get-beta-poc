@@ -27,7 +27,10 @@ npm run test:watch # Watch mode testing
 **Matching Algorithm** (`src/lib/matching.ts`)
 - `normalizePoints()`: Normalize point sets (translate to centroid + RMS scaling)
 - `modifiedHausdorffDistance()`: Calculate MHD between two point sets
-- `searchRoutes()`: Search matching routes, returns results sorted by similarity
+- `dtwDistance()`: Dynamic Time Warping for sequence comparison
+- `relativeOrderSimilarity()`: Order-aware matching tolerant to perspective distortion
+- `combinedSimilarity()`: Weighted combination of MHD and order similarity
+- `searchRoutes()`: Search matching routes using combined algorithm
 
 **Data Management** (`src/hooks/useRoutes.ts`)
 - React hook providing route CRUD operations
@@ -38,11 +41,17 @@ npm run test:watch # Watch mode testing
 ```
 User marked points (Point[])
     ↓
-normalizePoints() → normalized coordinates
+┌─────────────────────────────────────────┐
+│         Combined Algorithm              │
+├─────────────────────────────────────────┤
+│  MHD Branch (weight: 0.6)               │
+│  normalizePoints() → MHD → similarity   │
+├─────────────────────────────────────────┤
+│  Order Branch (weight: 0.4)             │
+│  sort by Y → normalize X → DTW          │
+└─────────────────────────────────────────┘
     ↓
-modifiedHausdorffDistance() → calculate distance to each route
-    ↓
-distanceToSimilarity() → convert to 0-100% similarity
+combinedSimilarity() → 0-100%
     ↓
 SearchResult[] sorted by similarity
 ```
@@ -55,6 +64,11 @@ SearchResult[] sorted by similarity
 
 ## Technical Decisions
 
-1. **MHD algorithm characteristics**: High tolerance for position offset, but sensitive to missing points
-2. **Multi-image search**: Uses highest similarity among all images as the match score
-3. **OPFS storage**: Data stored locally in browser only, no cloud sync
+1. **Combined matching algorithm**: MHD (0.6) + order-aware matching (0.4) for better tolerance to perspective distortion
+2. **Algorithm parameters**: `maxDistance=0.6`, `mhdWeight=0.6`, `orderWeight=0.4`
+3. **Multi-image search**: Uses highest similarity among all images as the match score
+4. **OPFS storage**: Data stored locally in browser only, no cloud sync
+
+## Research Reference
+
+See `docs/research/2025-11-29-angle-invariant-matching.md` for algorithm research and experiment results.

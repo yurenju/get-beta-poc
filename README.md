@@ -15,7 +15,7 @@
 - React 19 + TypeScript
 - Vite
 - Origin Private File System (OPFS) - 瀏覽器本地儲存
-- Modified Hausdorff Distance (MHD) - 點集合匹配演算法
+- 組合匹配演算法 (MHD + DTW 順序匹配) - 對不同拍攝角度有較好容忍度
 
 ## 快速開始
 
